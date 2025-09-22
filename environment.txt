@@ -1,0 +1,51 @@
+name: fastapi-ai
+channels:
+  - defaults
+dependencies:
+  - bzip2=1.0.8=h80987f9_6
+  - ca-certificates=2025.9.9=hca03da5_0
+  - expat=2.7.1=h313beb8_0
+  - libcxx=20.1.8=h8869778_0
+  - libffi=3.4.4=hca03da5_1
+  - libzlib=1.3.1=h5f15de7_0
+  - ncurses=6.5=hee39554_0
+  - openssl=3.0.17=h4ee41c1_0
+  - pip=25.2=pyhc872135_0
+  - python=3.11.13=h19e8193_0
+  - readline=8.3=h0b18652_0
+  - setuptools=78.1.1=py311hca03da5_0
+  - sqlite=3.50.2=h79febb2_1
+  - tk=8.6.15=hcd8a7d5_0
+  - wheel=0.45.1=py311hca03da5_0
+  - xz=5.6.4=h80987f9_1
+  - zlib=1.3.1=h5f15de7_0
+  - pip:
+      - annotated-types==0.7.0
+      - anyio==4.10.0
+      - beanie==2.0.0
+      - click==8.2.1
+      - dnspython==2.8.0
+      - fastapi==0.116.2
+      - h11==0.16.0
+      - idna==3.10
+      - joblib==1.5.2
+      - lazy-model==0.3.0
+      - motor==3.7.1
+      - numpy==2.3.3
+      - pandas==2.3.2
+      - pydantic==2.11.9
+      - pydantic-core==2.33.2
+      - pymongo==4.15.1
+      - python-dateutil==2.9.0.post0
+      - pytz==2025.2
+      - scikit-learn==1.7.2
+      - scipy==1.16.2
+      - six==1.17.0
+      - sniffio==1.3.1
+      - starlette==0.48.0
+      - threadpoolctl==3.6.0
+      - typing-extensions==4.15.0
+      - typing-inspection==0.4.1
+      - tzdata==2025.2
+      - uvicorn==0.35.0
+prefix: /opt/anaconda3/envs/fastapi-ai
