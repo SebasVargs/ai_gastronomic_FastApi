@@ -10,11 +10,26 @@ class ReviewRepositoryImpl(ReviewRepository):
         self.db = db
         self.collection = db["reviews"]
 
+
+    async def get_all(self) -> List[Review]:
+        try:
+            docs = list(self.collection.find())
+            reviews = []
+            for doc in docs:
+                doc["_id"] = str(doc["_id"])
+                reviews.append(Review(**doc))
+            return reviews
+        except Exception as e:
+            print(f"Error en get_all: {e}")
+            return []
+
+
     async def create(self, review: Review) -> Review:
         review_dict = review.model_dump(exclude={"_id"})
         result = self.collection.insert_one(review_dict)
         review_dict["_id"] = str(result.inserted_id)
         return Review(**review_dict)
+
 
     async def get_by_user(self, user_id: str) -> List[Review]:
         query = {"id_usuario": user_id}
@@ -25,6 +40,7 @@ class ReviewRepositoryImpl(ReviewRepository):
             reviews.append(Review(**doc))
         return reviews
 
+
     async def get_by_restaurant(self, restaurant_id: str) -> List[Review]:
         query = {"id_restaurante": restaurant_id}
         docs = list(self.collection.find(query).sort("fecha", -1))
@@ -34,6 +50,7 @@ class ReviewRepositoryImpl(ReviewRepository):
             reviews.append(Review(**doc))
         return reviews
 
+
     async def get_favorites_by_user(self, user_id: str) -> List[Review]:
         query = {"id_usuario": user_id, "es_favorito": True}
         docs = list(self.collection.find(query))
@@ -42,6 +59,7 @@ class ReviewRepositoryImpl(ReviewRepository):
             doc["_id"] = str(doc["_id"])
             reviews.append(Review(**doc))
         return reviews
+
 
     async def get_by_id(self, review_id: str) -> Optional[Review]:
         try:
@@ -57,16 +75,19 @@ class ReviewRepositoryImpl(ReviewRepository):
                 return Review(**doc)
         return None
 
+
     async def update(self, review_id: str, review: Review) -> bool:
         review_dict = review.model_dump(exclude={"_id", "id"})
         query = {"$or": [{"id": review_id}, {"_id": ObjectId(review_id)}]}
         result = self.collection.update_one(query, {"$set": review_dict})
         return result.modified_count > 0
 
+
     async def delete(self, review_id: str) -> bool:
         query = {"$or": [{"id": review_id}, {"_id": ObjectId(review_id)}]}
         result = self.collection.delete_one(query)
         return result
+
 
     async def get_by_category(self, categoria: str) -> List[Plate]:
         query = {

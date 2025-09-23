@@ -16,6 +16,35 @@ class PlateRepositoryImpl(PlateRepository):
         plate_dict["_id"] = str(result.inserted_id)
         return Plate(**plate_dict)
     
+        
+    async def get_all(self) -> List[Plate]:
+        try:
+            docs = list(self.collection.find({"activo": True}))
+            plates = []
+            for doc in docs:
+                doc["_id"] = str(doc["_id"])
+                plates.append(Plate(**doc))
+            return plates
+        except Exception as e:
+            print(f"Error en get_all: {e}")
+            return []
+
+
+    async def get_by_category(self, category: str) -> List[Plate]:
+        try:
+            docs = list(self.collection.find({
+                "categoria": category,
+                "activo": True
+            }))
+            plates = []
+            for doc in docs:
+                doc["_id"] = str(doc["_id"])
+                plates.append(Plate(**doc))
+            return plates
+        except Exception as e:
+            print(f"Error en get_by_category: {e}")
+            return []
+
 
     async def get_by_id(self, id_plato: str) -> Optional[Plate]:
         try:
