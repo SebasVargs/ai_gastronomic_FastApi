@@ -44,7 +44,7 @@ class RestaurantRepositoryImpl(RestaurantRepository):
     
     async def get_by_category(self, categoria: str) -> List[Restaurant]:
         query = {
-            "categoria": {"$regex": categoria, "$options": "i"},
+            "categoria_rest": {"$regex": categoria, "$options": "i"},
             "activo": True
         }
         docs = list(self.collection.find(query))

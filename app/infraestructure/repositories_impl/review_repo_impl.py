@@ -33,7 +33,7 @@ class ReviewRepositoryImpl(ReviewRepository):
 
     async def get_by_user(self, user_id: str) -> List[Review]:
         query = {"id_usuario": user_id}
-        docs = list(self.collection.find(query).sort("fecha", -1))
+        docs = list(self.collection.find(query).sort("fecha_creacion", -1))
         reviews = []
         for doc in docs:
             doc["_id"] = str(doc["_id"])
@@ -43,7 +43,7 @@ class ReviewRepositoryImpl(ReviewRepository):
 
     async def get_by_restaurant(self, restaurant_id: str) -> List[Review]:
         query = {"id_restaurante": restaurant_id}
-        docs = list(self.collection.find(query).sort("fecha", -1))
+        docs = list(self.collection.find(query).sort("fecha_creacion", -1))
         reviews = []
         for doc in docs:
             doc["_id"] = str(doc["_id"])
@@ -91,7 +91,7 @@ class ReviewRepositoryImpl(ReviewRepository):
 
     async def get_by_category(self, categoria: str) -> List[Plate]:
         query = {
-            "categoria": {"$regex": categoria, "$options": "i"},
+            "categoria_plato": {"$regex": categoria, "$options": "i"},
             "activo": True
         }
         docs = list(self.collection.find(query))

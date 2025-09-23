@@ -28,6 +28,16 @@ class PlateRepositoryImpl(PlateRepository):
         except Exception as e:
             print(f"Error en get_all: {e}")
             return []
+        
+
+    async def get_by_restaurant(self, restaurant_id: str) -> List[Plate]:
+        query = {"id_restaurante": restaurant_id, "activo": True}
+        docs = list(self.collection.find(query))
+        plates = []
+        for doc in docs:
+            doc["_id"] = str(doc["_id"])
+            plates.append(Plate(**doc))
+        return plates
 
 
     async def get_by_category(self, category: str) -> List[Plate]:
@@ -49,7 +59,7 @@ class PlateRepositoryImpl(PlateRepository):
     async def get_by_id(self, id_plato: str) -> Optional[Plate]:
         try:
             query = {"$or": [
-                {"id": id_plato},
+                {"id_plato": id_plato},
                 {"_id": ObjectId(id_plato)}
             ]}
             doc = self.collection.find_one(query)
