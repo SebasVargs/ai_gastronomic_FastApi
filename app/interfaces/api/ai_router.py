@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File, BackgroundTasks
 from typing import Dict, Any, Optional
 from fastapi.responses import JSONResponse
+from sklearn.preprocessing import StandardScaler
 import os
 import shutil
 import time
@@ -396,7 +397,7 @@ async def predict_single_rating(resturant_data: dict):
             "predicted_rating": round(predicted_rating, 2),
             "confidence_level": confidence_level,
             "recommendation": recommendation_text,
-            "input_data": restaurant_data,
+            "input_data": resturant_data,
             "model_version": "synthetic_trained_v1"
         }
         

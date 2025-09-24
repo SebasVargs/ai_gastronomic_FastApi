@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, classification_report
 import matplotlib.pyplot as plt
-import seaborn as sns
 from datetime import datetime
 
 class SyntheticDataService:
