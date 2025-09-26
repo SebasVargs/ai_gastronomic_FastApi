@@ -45,7 +45,7 @@ class GenerateDatasetUseCase:
                 if restaurant_reviews:
                     for review in restaurant_reviews:
                         record = {
-                            'id_restaurante': restaurant.restaurante_id,
+                            'restaurante_id': restaurant.restaurante_id,
                             'latitud': restaurant.latitud,
                             'longitud': restaurant.longitud,
                             'categoria_rest': restaurant.categoria_rest,
@@ -63,7 +63,7 @@ class GenerateDatasetUseCase:
                             'sábado_cierre_min': restaurant.horarios.sábado_cierre_min or 1440,
                             'domingo_apertura_min': restaurant.horarios.domingo_apertura_min or 0,
                             'domingo_cierre_min': restaurant.horarios.domingo_cierre_min or 1440,
-                            'id_plato': plate.plato_id,
+                            'plato_id': plate.plato_id,
                             'nombre_plato': plate.nombre_plato,
                             'categoria_plato': plate.categoria_plato,
                             'precio': plate.precio,
@@ -80,7 +80,7 @@ class GenerateDatasetUseCase:
                     # Si no hay reviews, crear registro con valores por defecto
                     now = datetime.utcnow()
                     record = {
-                        'id_restaurante': restaurant.restaurante_id,
+                        'restaurante_id': restaurant.restaurante_id,
                         'latitud': restaurant.latitud,
                         'longitud': restaurant.longitud,
                         'categoria_rest': restaurant.categoria_rest,
@@ -98,7 +98,7 @@ class GenerateDatasetUseCase:
                         'sábado_cierre_min': restaurant.horarios.sábado_cierre_min or 1440,
                         'domingo_apertura_min': restaurant.horarios.domingo_apertura_min or 0,
                         'domingo_cierre_min': restaurant.horarios.domingo_cierre_min or 1440,
-                        'id_plato': plate.plato_id,
+                        'plato_id': plate.plato_id,
                         'nombre_plato': plate.nombre_plato,
                         'categoria_plato': plate.categoria_plato,
                         'precio': plate.precio,

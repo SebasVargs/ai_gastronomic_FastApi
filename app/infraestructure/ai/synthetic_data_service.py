@@ -52,7 +52,7 @@ class SyntheticDataService:
                 "total_records": len(self.df_synthetic),
                 "columns": list(self.df_synthetic.columns),
                 "missing_columns": missing_columns,
-                "data_types": self.df_synthetic.dtypes.to_dict(),
+                "data_types": self.df_synthetic.dtypes.astype(str).to_dict(),
                 "null_values": self.df_synthetic.isnull().sum().to_dict(),
                 "unique_restaurants": self.df_synthetic['restaurante_id'].nunique() if 'restaurante_id' in self.df_synthetic.columns else 0,
                 "unique_plates": self.df_synthetic['plato_id'].nunique() if 'plato_id' in self.df_synthetic.columns else 0,

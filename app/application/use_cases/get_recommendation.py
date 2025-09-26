@@ -29,7 +29,7 @@ class GetRecommendationUseCase:
         
         # Preparar datos para el modelo de ML
         user_data = {
-            "id_user": user.id,
+            "user_id": user.id,
             "edad": user.edad,
             "origen": user.origen,
             "preferencias": user.preferencias,

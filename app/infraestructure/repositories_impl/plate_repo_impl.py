@@ -31,7 +31,7 @@ class PlateRepositoryImpl(PlateRepository):
         
 
     async def get_by_restaurant(self, restaurant_id: str) -> List[Plate]:
-        query = {"id_restaurante": restaurant_id, "activo": True}
+        query = {"restaurante_id": restaurant_id, "activo": True}
         docs = list(self.collection.find(query))
         plates = []
         for doc in docs:
@@ -59,7 +59,7 @@ class PlateRepositoryImpl(PlateRepository):
     async def get_by_id(self, id_plato: str) -> Optional[Plate]:
         try:
             query = {"$or": [
-                {"id_plato": id_plato},
+                {"plato_id": id_plato},
                 {"_id": ObjectId(id_plato)}
             ]}
             doc = self.collection.find_one(query)

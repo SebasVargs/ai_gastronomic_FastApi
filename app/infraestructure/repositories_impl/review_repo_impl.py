@@ -32,7 +32,7 @@ class ReviewRepositoryImpl(ReviewRepository):
 
 
     async def get_by_user(self, user_id: str) -> List[Review]:
-        query = {"id_usuario": user_id}
+        query = {"usuario_id": user_id}
         docs = list(self.collection.find(query).sort("fecha_creacion", -1))
         reviews = []
         for doc in docs:
@@ -52,7 +52,7 @@ class ReviewRepositoryImpl(ReviewRepository):
 
 
     async def get_favorites_by_user(self, user_id: str) -> List[Review]:
-        query = {"id_usuario": user_id, "es_favorito": True}
+        query = {"usuario_id": user_id, "es_favorito": True}
         docs = list(self.collection.find(query))
         reviews = []
         for doc in docs:

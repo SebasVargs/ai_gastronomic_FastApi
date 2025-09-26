@@ -19,7 +19,7 @@ class RestaurantRepositoryImpl(RestaurantRepository):
     async def get_by_id(self, id_restaurante: str) -> Optional[Restaurant]:
         try:
             query = {"$or": [
-                {"id_restaurante": id_restaurante},
+                {"restaurante_id": id_restaurante},
                 {"id": id_restaurante},
                 {"_id": ObjectId(id_restaurante)}
             ]}
@@ -28,7 +28,7 @@ class RestaurantRepositoryImpl(RestaurantRepository):
                 doc["_id"] = str(doc["_id"])
                 return Restaurant(**doc)
         except Exception:
-            doc = self.collection.find_one({"id_restaurante": id_restaurante})
+            doc = self.collection.find_one({"restaurante_id": id_restaurante})
             if doc:
                 doc["_id"] = str(doc["_id"])
                 return Restaurant(**doc)
@@ -99,12 +99,12 @@ class RestaurantRepositoryImpl(RestaurantRepository):
         return R * c
 
     async def update(self, id_restaurante: str, restaurant: Restaurant) -> bool:
-        restaurant_dict = restaurant.model_dump(exclude={"_id", "id", "id_restaurante"})
-        query = {"id_restaurante": id_restaurante}
+        restaurant_dict = restaurant.model_dump(exclude={"_id", "id", "restaurante_id"})
+        query = {"restaurante_id": id_restaurante}
         result = self.collection.update_one(query, {"$set": restaurant_dict})
         return result.modified_count > 0
 
     async def delete(self, id_restaurante: str) -> bool:
-        query = {"id_restaurante": id_restaurante}
+        query = {"restaurante_id": id_restaurante}
         result = self.collection.update_one(query, {"$set": {"activo": False}})
         return result.modified_count > 0

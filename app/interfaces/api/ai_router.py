@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFile, File
 from typing import Dict, Any, Optional
 from fastapi.responses import JSONResponse
 from sklearn.preprocessing import StandardScaler
