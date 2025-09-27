@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 
 class RecommendationRequestSchema(BaseModel):
-    id_usuario: str = Field(..., min_length=1)
+    user_id: str = Field(..., min_length=1)
     tipo_recomendacion: str = Field(..., pattern="^(restaurantes|platos)$")
     limite: Optional[int] = Field(5, ge=1, le=20)
     incluir_ubicacion: Optional[bool] = False
@@ -13,7 +13,7 @@ class RecommendationRequestSchema(BaseModel):
 
 class RecommendationResponseSchema(BaseModel):
     tipo: str
-    id_usuario: str
+    user_id: str
     criterios_usados: List[str]
     total_disponibles: int
     recomendaciones: List[Union[Dict[str, Any], Any]]

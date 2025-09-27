@@ -5,8 +5,8 @@ from datetime import datetime
 class Review(BaseModel):
     id: Optional[str] = None
     _id: Optional[str] = None
-    id_usuario: str
-    id_restaurante: str
+    user_id: str
+    restaurante_id: str
     fecha: datetime
     rating: float
     comentario: Optional[str] = None

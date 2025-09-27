@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks, UploadFi
 from typing import Dict, Any, Optional
 from fastapi.responses import JSONResponse
 from sklearn.preprocessing import StandardScaler
+from pydantic import BaseModel
 import os
 import shutil
 import time
@@ -38,32 +39,29 @@ def get_repositories():
 
 # ENDPOINTS PARA DATOS SINTÉTICOS -----------------------------------
 
+class CsvRequest(BaseModel):
+    csv_file_path: str
+
 @router.post("/load-synthetic-data")
-async def load_synthetic_data(csv_file_path: str):
+async def load_synthetic_data(request: CsvRequest):
     """
     Carga tu archivo CSV de 80,000 registros sintéticos
-    
-    Parámetros:
-    - csv_file_path: Ruta al archivo CSV con datos sintéticos
-    
-    Ejemplo: POST /api/ai/load-synthetic-data
     Body: {"csv_file_path": "/path/to/your/synthetic_data.csv"}
     """
+    csv_file_path = request.csv_file_path
     try:
         if not os.path.exists(csv_file_path):
             raise HTTPException(status_code=404, detail=f"Archivo no encontrado: {csv_file_path}")
         
         info = synthetic_ai_service.load_synthetic_data(csv_file_path)
-        
+
         return {
             "success": True,
             "message": "Datos sintéticos cargados exitosamente",
             "data_info": info
         }
-        
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error cargando datos sintéticos: {str(e)}")
-
 
 @router.post("/upload-synthetic-csv")
 async def upload_synthetic_csv(file: UploadFile = File(...)):
@@ -239,7 +237,7 @@ async def get_advanced_recommendations(
         if not synthetic_ai_service.model_rf:
             synthetic_ai_service.load_models()
 
-        user = await repos["user_repo"].get_by_id(request.id_usuario)
+        user = await repos["user_repo"].get_by_id(request.user_id)
 
         if not user:
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
@@ -257,7 +255,7 @@ async def get_advanced_recommendations(
         if not items:
             return RecommendationResponseSchema(
                 tipo = request.tipo_recomendacion,
-                id_usuario = request.id_usuario,
+                user_id = request.user_id,
                 criterios_usados = user.preferencias,
                 total_disponibles = 0,
                 recomendaciones = [],

@@ -7,13 +7,13 @@ class CreateReviewUseCase:
     def __init__(self, review_repository: ReviewRepository):
         self.review_repository = review_repository
     
-    async def execute(self, id_usuario: str, id_restaurante: str, rating: float, comentario: str = None, es_favorito: bool = False) -> Review:
+    async def execute(self, user_id: str, restaurante_id: str, rating: float, comentario: str = None, es_favorito: bool = False) -> Review:
         now = datetime.utcnow()
 
         review = Review(
             id = str(uuid.uuid4()),
-            id_usuario = id_usuario,
-            id_restaurante = id_restaurante,
+            user_id = user_id,
+            restaurante_id = restaurante_id,
             year = now.year,
             month = now.month,
             day = now.day,

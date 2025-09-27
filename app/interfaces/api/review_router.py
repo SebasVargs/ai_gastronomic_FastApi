@@ -17,8 +17,8 @@ async def create_review(review_data: ReviewCreateSchema, review_repo = Depends(g
     try:
         create_review_use_case = CreateReviewUseCase(review_repo)
         review = await create_review_use_case.execute(
-            id_usuario = review_data.id_usuario,
-            id_restaurante = review_data.id_restaurante,
+            user_id = review_data.id_usuario,
+            restaurante_id = review_data.id_restaurante,
             rating = review_data.rating,
             comentario = review_data.comentario,
             es_favorito = review_data.es_favorito,
@@ -39,7 +39,7 @@ async def get_review(review_id: str, review_repo = Depends(get_review_repository
 
 @router.get("/", response_model=List[ReviewResponseSchema])
 async def get_reviews(
-    id_usuario: Optional[str] = Query(None, description="Filtrar por usuario"),
+    user_id: Optional[str] = Query(None, description="Filtrar por usuario"),
     id_restaurante: Optional[str] = Query(None, description="Filtrar por restaurante"),
     favorites_only: Optional[bool] = Query(False, description="Solo favoritos"),
     review_repo = Depends(get_review_repository)
