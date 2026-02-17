@@ -25,7 +25,7 @@ class RestaurantCreateSchema(BaseModel):
     longitud: float = Field(... , ge=-180, le=180)
     categoria: str = Field(... , min_length=1)
     direccion: str = Field(... , min_length=1)
-    telefono: str = Field(... , max_length=1)
+    telefono: str = Field(... , max_length=20)
     horarios: HorarioSchema
 
 class RestaurantResponseSchema(BaseModel):

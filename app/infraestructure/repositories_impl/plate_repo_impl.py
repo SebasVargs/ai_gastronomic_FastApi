@@ -19,7 +19,7 @@ class PlateRepositoryImpl(PlateRepository):
         
     async def get_all(self) -> List[Plate]:
         try:
-            docs = list(self.collection.find({"activo": True}))
+            docs = list(self.collection.find())
             plates = []
             for doc in docs:
                 doc["_id"] = str(doc["_id"])
@@ -31,7 +31,7 @@ class PlateRepositoryImpl(PlateRepository):
         
 
     async def get_by_restaurant(self, restaurant_id: str) -> List[Plate]:
-        query = {"restaurante_id": restaurant_id, "activo": True}
+        query = {"restaurante_id": restaurant_id}
         docs = list(self.collection.find(query))
         plates = []
         for doc in docs:
@@ -43,8 +43,7 @@ class PlateRepositoryImpl(PlateRepository):
     async def get_by_category(self, category: str) -> List[Plate]:
         try:
             docs = list(self.collection.find({
-                "categoria": category,
-                "activo": True
+                "categoria": category
             }))
             plates = []
             for doc in docs:
@@ -76,10 +75,10 @@ class PlateRepositoryImpl(PlateRepository):
     
 
     async def get_popular_plates(self, limit = 10) -> List[Plate]:
-        docs = list(self.collection.find({"activo": True}).sort("popularidad", -1).limit(limit))
+        docs = list(self.collection.find().sort("popularidad", -1).limit(limit))
         plates = []
         for doc in docs:
-            doc["_id"] = str(doc("_id"))
+            doc["_id"] = str(doc["_id"])
             plates.append(Plate(**doc))
         return plates
     
@@ -92,6 +91,6 @@ class PlateRepositoryImpl(PlateRepository):
     
 
     async def delete(self, id_plate: str) -> bool:
-        query = {"id", id_plate}
-        result = self.collection.update_one(query, {"$set": {"activo": False}})
-        return result.modified_count > 0
+        query = {"id": id_plate}
+        result = self.collection.delete_one(query)
+        return result.deleted_count > 0

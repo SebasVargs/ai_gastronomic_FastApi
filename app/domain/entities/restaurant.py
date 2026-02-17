@@ -26,8 +26,12 @@ class Restaurant(BaseModel):
     longitud: float
     categoria: str
     horarios: HorarioRestaurante
-    telefono: int
+    telefono: str
     direccion: str
+    rating: Optional[float] = None
+    popularidad: Optional[float] = None
+    categoria_rest: Optional[str] = None
+    activo: Optional[bool] = True
 
     class Config:
         populate_by_name = True

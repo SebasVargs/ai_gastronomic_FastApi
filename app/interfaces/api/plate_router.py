@@ -34,15 +34,21 @@ async def get_plate(id_plate: str, plate_repo = Depends(get_plate_repository)):
 async def get_plates(
     categoria: Optional[str] = Query(None, description="Filtrar por categoría"),
     popularidad: Optional[bool] = Query(False, description="Obtener platos populares"),
-    limit: Optional[int] = Query(10, description="Límite de resultados"),
+    limit: Optional[int] = Query(None, description="Límite de resultados (opcional)"),
     plate_repo = Depends(get_plate_repository)
 ):
     if categoria:
         plates = await plate_repo.get_by_category(categoria)
     elif popularidad:
+        # Si es por popularidad, siempre aplicamos un límite (por defecto 10 si no se especifica)
+        limit = limit or 10
         plates = await plate_repo.get_popular_plates(limit)
     else:
         plates = await plate_repo.get_all()
     
-    return [PlateResponseSchema(**plate.model_dump()) for plate in plates[:limit]]
+    # Solo aplicamos el límite si se especifica y no es una búsqueda por popularidad
+    if limit and not popularidad:
+        plates = plates[:limit]
+    
+    return [PlateResponseSchema(**plate.model_dump()) for plate in plates]
 

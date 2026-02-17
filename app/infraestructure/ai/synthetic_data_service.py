@@ -23,6 +23,22 @@ class SyntheticDataService:
         self.reports_dir = "reports" 
         os.makedirs(self.models_dir, exist_ok=True)
         os.makedirs(self.reports_dir, exist_ok=True)
+    
+    @staticmethod
+    def to_native_types(obj):
+        """Convierte tipos numpy a tipos nativos de Python para serialización JSON"""
+        if isinstance(obj, dict):
+            return {key: SyntheticDataService.to_native_types(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [SyntheticDataService.to_native_types(item) for item in obj]
+        elif isinstance(obj, (np.integer, np.int64, np.int32)):
+            return int(obj)
+        elif isinstance(obj, (np.floating, np.float64, np.float32)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return obj
 
     def load_synthetic_data(self, csv_path: str) -> Dict[str, Any]:
         """
@@ -239,10 +255,10 @@ class SyntheticDataService:
         for cluster in range(optimal_k):
             cluster_mask = clusters_train == cluster
             cluster_analysis[f'cluster_{cluster}'] = {
-                'size': np.sum(cluster_mask),
-                'avg_rating': y_train[cluster_mask].mean(),
-                'avg_price': df_processed.iloc[X_train.index[cluster_mask]]['precio'].mean() if 'precio' in df_processed.columns else 0,
-                'avg_popularity': df_processed.iloc[X_train.index[cluster_mask]]['popularidad'].mean() if 'popularidad' in df_processed.columns else 0
+                'size': int(np.sum(cluster_mask)),
+                'avg_rating': float(y_train[cluster_mask].mean()),
+                'avg_price': float(df_processed.iloc[X_train.index[cluster_mask]]['precio'].mean()) if 'precio' in df_processed.columns else 0,
+                'avg_popularity': float(df_processed.iloc[X_train.index[cluster_mask]]['popularidad'].mean()) if 'popularidad' in df_processed.columns else 0
             }
         
         # === 3. MÉTRICAS AVANZADAS ===
@@ -261,9 +277,9 @@ class SyntheticDataService:
             if np.sum(mask) > 0:
                 range_mse = mean_squared_error(y_test[mask], y_pred_test[mask])
                 precision_by_range[range_name] = {
-                    'count': np.sum(mask),
-                    'mse': range_mse,
-                    'rmse': np.sqrt(range_mse)
+                    'count': int(np.sum(mask)),
+                    'mse': float(range_mse),
+                    'rmse': float(np.sqrt(range_mse))
                 }
         
         # Guardar modelos
@@ -272,18 +288,33 @@ class SyntheticDataService:
         # === RESULTADOS FINALES ===
         training_time = (datetime.now() - start_time).total_seconds()
         
+        # Convertir métricas RF a tipos nativos
+        rf_metrics_native = {
+            'train_mse': float(rf_metrics['train_mse']),
+            'test_mse': float(rf_metrics['test_mse']),
+            'train_rmse': float(rf_metrics['train_rmse']),
+            'test_rmse': float(rf_metrics['test_rmse']),
+            'train_mae': float(rf_metrics['train_mae']),
+            'test_mae': float(rf_metrics['test_mae']),
+            'train_r2': float(rf_metrics['train_r2']),
+            'test_r2': float(rf_metrics['test_r2']),
+            'cv_r2_mean': float(rf_metrics['cv_r2_mean']),
+            'cv_r2_std': float(rf_metrics['cv_r2_std']),
+            'feature_importance': {k: float(v) for k, v in rf_metrics['feature_importance'].items()}
+        }
+        
         results = {
             'success': True,
-            'training_time_seconds': training_time,
-            'total_samples': len(X),
-            'train_samples': len(X_train),
-            'test_samples': len(X_test),
-            'features_used': len(self.feature_columns),
-            'random_forest_metrics': rf_metrics,
+            'training_time_seconds': float(training_time),
+            'total_samples': int(len(X)),
+            'train_samples': int(len(X_train)),
+            'test_samples': int(len(X_test)),
+            'features_used': int(len(self.feature_columns)),
+            'random_forest_metrics': rf_metrics_native,
             'clustering_analysis': {
-                'optimal_k': optimal_k,
+                'optimal_k': int(optimal_k),
                 'cluster_details': cluster_analysis,
-                'silhouette_score': 'No calculado'  # Podrías agregarlo
+                'silhouette_score': 'No calculado'
             },
             'precision_by_rating_range': precision_by_range,
             'model_quality_assessment': self._assess_model_quality(rf_metrics)

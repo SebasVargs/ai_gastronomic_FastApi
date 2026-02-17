@@ -6,6 +6,7 @@ from pydantic import BaseModel
 import os
 import shutil
 import time
+from datetime import datetime
 from app.infraestructure.db.mongo_client import get_db
 from app.infraestructure.repositories_impl.user_repo_impl import UserRepositoryImpl
 from app.infraestructure.repositories_impl.restaurant_repo_impl import RestaurantRepositoryImpl
@@ -13,6 +14,7 @@ from app.infraestructure.repositories_impl.plate_repo_impl import PlateRepositor
 from app.infraestructure.repositories_impl.review_repo_impl import ReviewRepositoryImpl
 from app.infraestructure.ai.ai_service import AIRecommendationService
 from app.infraestructure.ai.synthetic_data_service import SyntheticDataService
+from app.infraestructure.data.csv_data_service import CsvDataService
 from app.application.use_cases.get_recommendation import GetRecommendationUseCase
 from app.application.use_cases.generate_dataset import GenerateDatasetUseCase
 from app.interfaces.schemas.recommendation_schema import (
@@ -27,6 +29,15 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 ai_service = AIRecommendationService()
 synthetic_ai_service = SyntheticDataService()
+csv_data_service = CsvDataService()  # Loads complementary_data.csv once
+
+
+@router.get("/categories")
+async def get_categories():
+    """Returns the list of unique food categories from the CSV data."""
+    stats = csv_data_service.get_stats()
+    return stats.get("categories", [])
+
 
 def get_repositories():
     db = get_db()
@@ -225,13 +236,6 @@ async def get_advanced_recommendations(
 ): 
     """
     Obtiene recomendaciones usando el modelo entrenado con datos sintéticos
-    
-    Flujo:
-    1. Obtiene perfil del usuario
-    2. Aplica modelo ML entrenado
-    3. Usa clustering para usuarios similares
-    4. Combina con filtros tradicionales
-    5. Retorna recomendaciones personalizadas y precisas
     """
     try:
         if not synthetic_ai_service.model_rf:
@@ -243,15 +247,12 @@ async def get_advanced_recommendations(
             raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
         if request.tipo_recomendacion == "restaurantes":
-            if request.incluir_ubicacion and request.latitud and request.longitud:
-                items = await repos["restaurant_repo"].get_by_location(
-                    request.latitud, request.longitud, request.radio_km
-                )
-            else:
-                items = await repos["restaurant_repo"].get_all()
+            items = csv_data_service.get_all_restaurants()
         else:
-            items = await repos["plate_repo"].get_popular_plates(50)
+            items = csv_data_service.get_all_plates()
 
+        print(f"📊 Total items obtenidos del CSV: {len(items)}")
+        
         if not items:
             return RecommendationResponseSchema(
                 tipo = request.tipo_recomendacion,
@@ -262,83 +263,188 @@ async def get_advanced_recommendations(
                 modelo_usado = False
             )
         
-        items_for_ml = []
+        items_for_processing = []
         for item in items:
             if hasattr(item, "model_dump"):
                 item_dict = item.model_dump()
             else:
                 item_dict = item
             
+            horarios = item_dict.get('horarios', {})
+            if hasattr(horarios, 'model_dump'):
+                horarios = horarios.model_dump()
+            elif not isinstance(horarios, dict):
+                horarios = {}
+
             ml_data = {
-                'restaurante_id': item_dict.get('restaurante_id', 'unknown'),
+                'restaurante_id': item_dict.get('restaurante_id') or item_dict.get('id') or 'unknown',
                 'latitud': item_dict.get('latitud', 4.6097),
                 'longitud': item_dict.get('longitud', -74.0817),
-                'categoria_rest': item_dict.get('categoria_rest', 'General'),
-                'categoria_plato': item_dict.get('categoria_plato', item_dict.get('categoria_rest', 'General')),
+                'categoria_rest': item_dict.get('categoria_rest') or item_dict.get('categoria') or 'General',
+                'categoria_plato': item_dict.get('categoria_plato') or item_dict.get('categoria') or 'General',
                 'precio': item_dict.get('precio', 15000),
-                'popularidad': item_dict.get('popularidad', item_dict.get('rating', 3.0) * 20),
-                'year': 2024,
-                'month': 10,
-                'day': 15,
-                'weekday': 1,
-                'rating': item_dict.get('rating', 3.0),
+                'popularidad': item_dict.get('popularidad') or ((item_dict.get('rating') or 3.0) * 20),
+                'year': datetime.now().year,
+                'month': datetime.now().month,
+                'day': datetime.now().day,
+                'weekday': datetime.now().weekday(),
+                'rating': item_dict.get('rating') or ((item_dict.get('popularidad') or 60) / 20.0),
                 'es_favorito': False,
-                # Horarios (valores por defecto si no están disponibles)
-                'lunes_apertura_min': item_dict.get('horarios', {}).get('lunes_apertura_min', 480) if 'horarios' in item_dict else 480,
-                'lunes_cierre_min': item_dict.get('horarios', {}).get('lunes_cierre_min', 1320) if 'horarios' in item_dict else 1320,
-                'martes_apertura_min': item_dict.get('horarios', {}).get('martes_apertura_min', 480) if 'horarios' in item_dict else 480,
-                'martes_cierre_min': item_dict.get('horarios', {}).get('martes_cierre_min', 1320) if 'horarios' in item_dict else 1320,
-                'miércoles_apertura_min': item_dict.get('horarios', {}).get('miércoles_apertura_min', 480) if 'horarios' in item_dict else 480,
-                'miércoles_cierre_min': item_dict.get('horarios', {}).get('miércoles_cierre_min', 1320) if 'horarios' in item_dict else 1320,
-                'jueves_apertura_min': item_dict.get('horarios', {}).get('jueves_apertura_min', 480) if 'horarios' in item_dict else 480,
-                'jueves_cierre_min': item_dict.get('horarios', {}).get('jueves_cierre_min', 1320) if 'horarios' in item_dict else 1320,
-                'viernes_apertura_min': item_dict.get('horarios', {}).get('viernes_apertura_min', 480) if 'horarios' in item_dict else 480,
-                'viernes_cierre_min': item_dict.get('horarios', {}).get('viernes_cierre_min', 1320) if 'horarios' in item_dict else 1320,
-                'sábado_apertura_min': item_dict.get('horarios', {}).get('sábado_apertura_min', 540) if 'horarios' in item_dict else 540,
-                'sábado_cierre_min': item_dict.get('horarios', {}).get('sábado_cierre_min', 1380) if 'horarios' in item_dict else 1380,
-                'domingo_apertura_min': item_dict.get('horarios', {}).get('domingo_apertura_min', 600) if 'horarios' in item_dict else 600,
-                'domingo_cierre_min': item_dict.get('horarios', {}).get('domingo_cierre_min', 1320) if 'horarios' in item_dict else 1320,
+                'lunes_apertura_min': item_dict.get('lunes_apertura_min') or horarios.get('lunes_apertura_min', 480),
+                'lunes_cierre_min': item_dict.get('lunes_cierre_min') or horarios.get('lunes_cierre_min', 1320),
+                'martes_apertura_min': item_dict.get('martes_apertura_min') or horarios.get('martes_apertura_min', 480),
+                'martes_cierre_min': item_dict.get('martes_cierre_min') or horarios.get('martes_cierre_min', 1320),
+                'miércoles_apertura_min': item_dict.get('miércoles_apertura_min') or horarios.get('miércoles_apertura_min', 480),
+                'miércoles_cierre_min': item_dict.get('miércoles_cierre_min') or horarios.get('miércoles_cierre_min', 1320),
+                'jueves_apertura_min': item_dict.get('jueves_apertura_min') or horarios.get('jueves_apertura_min', 480),
+                'jueves_cierre_min': item_dict.get('jueves_cierre_min') or horarios.get('jueves_cierre_min', 1320),
+                'viernes_apertura_min': item_dict.get('viernes_apertura_min') or horarios.get('viernes_apertura_min', 480),
+                'viernes_cierre_min': item_dict.get('viernes_cierre_min') or horarios.get('viernes_cierre_min', 1320),
+                'sábado_apertura_min': item_dict.get('sábado_apertura_min') or horarios.get('sábado_apertura_min', 540),
+                'sábado_cierre_min': item_dict.get('sábado_cierre_min') or horarios.get('sábado_cierre_min', 1380),
+                'domingo_apertura_min': item_dict.get('domingo_apertura_min') or horarios.get('domingo_apertura_min', 600),
+                'domingo_cierre_min': item_dict.get('domingo_cierre_min') or horarios.get('domingo_cierre_min', 1320),
             }
             
-            # Predecir rating usando el modelo entrenado
-            try:
-                predicted_rating = synthetic_ai_service.predict_rating(ml_data)
-                item_dict['predicted_rating'] = predicted_rating
-                item_dict['ml_confidence'] = min(predicted_rating / 5.0, 1.0)
-            except Exception as e:
-                print(f"Error prediciendo rating: {e}")
-                item_dict['predicted_rating'] = item_dict.get('rating', 3.5)
-                item_dict['ml_confidence'] = 0.5
-            
-            items_for_ml.append(item_dict)
+            item_dict['ml_data'] = ml_data
+            items_for_processing.append(item_dict)
+
+        filtered_items = items_for_processing
+        categorias_seleccionadas = []
+
+        if request.precio_min is not None or request.precio_max is not None:
+            precio_min = request.precio_min if request.precio_min is not None else 0
+            precio_max = request.precio_max if request.precio_max is not None else float('inf')
+            filtered_items = [item for item in filtered_items 
+                            if precio_min <= item['ml_data'].get('precio', 0) <= precio_max]
+            print(f"💰 Después de filtro precio ({precio_min}-{precio_max}): {len(filtered_items)} items")
         
-        # Filtrar por preferencias del usuario
-        filtered_items = []
-        for item in items_for_ml:
-            category = item.get('categoria_rest', item.get('categoria_plato', ''))
+        if request.categoria:
+            categorias_seleccionadas = [c.strip().lower() for c in request.categoria.split(',') if c.strip()]
+            filtered_items = [item for item in filtered_items 
+                            if any(cat in (item['ml_data'].get('categoria_rest') or item['ml_data'].get('categoria_plato') or item.get('categoria') or '').lower() 
+                                   for cat in categorias_seleccionadas)]
+            print(f"🍕 Después de filtro categoría '{request.categoria}': {len(filtered_items)} items")
+        
+        if request.abierto_ahora and request.tipo_recomendacion == "restaurantes":
+            now = datetime.now()
+            dia_actual = request.dia_semana if request.dia_semana is not None else now.weekday()
+            hora_actual = request.hora if request.hora is not None else now.hour * 60 + now.minute
+            
+            dias_semana = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+            dia_nombre = dias_semana[dia_actual]
+            
+            items_abiertos = []
+            for item in filtered_items:
+                ml = item['ml_data']
+                apertura_key = f'{dia_nombre}_apertura_min'
+                cierre_key = f'{dia_nombre}_cierre_min'
+                apertura = ml.get(apertura_key, 0)
+                cierre = ml.get(cierre_key, 1440)
+                
+                if apertura <= hora_actual <= cierre:
+                    items_abiertos.append(item)
+            filtered_items = items_abiertos
+            print(f"🕐 Después de filtro horario (abierto {dia_nombre} a las {hora_actual} min): {len(filtered_items)} items")
+
+        if request.popularidad_minima is not None:
+            filtered_items = [item for item in filtered_items 
+                            if item['ml_data'].get('popularidad', 0) >= request.popularidad_minima]
+            print(f"📈 Después de filtro popularidad mínima ({request.popularidad_minima}): {len(filtered_items)} items")
+
+        if request.excluir_categorias:
+            excluir_lower = [cat.lower() for cat in request.excluir_categorias]
+            filtered_items = [item for item in filtered_items 
+                            if not any(exc in (item['ml_data'].get('categoria_rest') or item['ml_data'].get('categoria_plato') or item.get('categoria') or '').lower() 
+                                      for exc in excluir_lower)]
+            print(f"❌ Después de filtro exclusión {request.excluir_categorias}: {len(filtered_items)} items")
+
+        print(f"🤖 Ejecutando predicción ML en {len(filtered_items)} items...")
+        
+        for item in filtered_items:
+            try:
+                predicted_rating = synthetic_ai_service.predict_rating(item['ml_data'])
+                item['predicted_rating'] = predicted_rating
+                item['ml_confidence'] = min(predicted_rating / 5.0, 1.0)
+            except Exception as e:
+                item['predicted_rating'] = item.get('rating', 3.5)
+                item['ml_confidence'] = 0.5
+
+        if request.rating_minimo is not None:
+            filtered_items = [item for item in filtered_items 
+                            if item.get('predicted_rating', 0) >= request.rating_minimo]
+            print(f"⭐ Después de filtro rating mínimo ({request.rating_minimo}): {len(filtered_items)} items")
+            
+        if request.confianza_minima is not None:
+            filtered_items = [item for item in filtered_items 
+                            if item.get('ml_confidence', 0) >= request.confianza_minima]
+            print(f"🎯 Después de filtro confianza ML mínima ({request.confianza_minima}): {len(filtered_items)} items")
+        
+        for item in filtered_items:
+            category = item['ml_data'].get('categoria_rest') or item['ml_data'].get('categoria_plato') or ''
             if any(pref.lower() in category.lower() for pref in user.preferencias):
                 item['preference_match'] = True
-                filtered_items.append(item)
-        
-        # Si no hay coincidencias por preferencias, usar todos pero marcar como no match
-        if not filtered_items:
-            for item in items_for_ml:
+            else:
                 item['preference_match'] = False
-                filtered_items.append(item)
         
-        # Ordenar por rating predicho y coincidencia de preferencias
-        filtered_items.sort(
-            key=lambda x: (x.get('preference_match', False), x.get('predicted_rating', 3.0)), 
-            reverse=True
-        )
+        print(f"✅ Items después de todos los filtros: {len(filtered_items)}")
         
-        # Tomar top recomendaciones
-        top_recommendations = filtered_items[:request.limite]
+        # DISTRIBUCIÓN PROPORCIONAL POR CATEGORÍA
+        top_recommendations = []
+        
+        if len(categorias_seleccionadas) > 1:
+            # Múltiples categorías: distribuir proporcionalmente
+            items_por_categoria = request.limite // len(categorias_seleccionadas)
+            items_extra = request.limite % len(categorias_seleccionadas)
+            
+            print(f"🎯 Distribuyendo {request.limite} items entre {len(categorias_seleccionadas)} categorías: {items_por_categoria} c/u + {items_extra} extra")
+            
+            for idx, cat in enumerate(categorias_seleccionadas):
+                items_cat = [item for item in filtered_items 
+                            if cat in (item['ml_data'].get('categoria_rest') or item['ml_data'].get('categoria_plato') or item.get('categoria') or '').lower()]
+                
+                items_cat.sort(
+                    key=lambda x: (x.get('preference_match', False), x.get('predicted_rating', 3.0)), 
+                    reverse=True
+                )
+                
+                cantidad = items_por_categoria + (1 if idx < items_extra else 0)
+                top_recommendations.extend(items_cat[:cantidad])
+                print(f"  📋 {cat}: {len(items_cat)} disponibles, tomando {cantidad}")
+            
+            # Mezclar resultados para variedad
+            import random
+            random.shuffle(top_recommendations)
+        else:
+            # Una sola categoría o sin categoría: ordenar normalmente
+            filtered_items.sort(
+                key=lambda x: (x.get('preference_match', False), x.get('predicted_rating', 3.0)), 
+                reverse=True
+            )
+            top_recommendations = filtered_items[:request.limite]
+        
+        print(f"🎁 Retornando {len(top_recommendations)} recomendaciones")
+        
+        criterios = user.preferencias + ["ML Prediction", "Rating Prediction"]
+        if request.precio_min or request.precio_max:
+            criterios.append(f"Precio: ${request.precio_min or 0:,.0f} - ${request.precio_max or 999999:,.0f}")
+        if request.categoria:
+            criterios.append(f"Categoría: {request.categoria}")
+        if request.rating_minimo:
+            criterios.append(f"Rating mínimo: {request.rating_minimo}")
+        if request.abierto_ahora:
+            criterios.append("Abierto ahora")
+        if request.popularidad_minima:
+            criterios.append(f"Popularidad mínima: {request.popularidad_minima}")
+        if request.confianza_minima:
+            criterios.append(f"Confianza ML mínima: {request.confianza_minima*100:.0f}%")
+        if request.excluir_categorias:
+            criterios.append(f"Excluir: {', '.join(request.excluir_categorias)}")
         
         return RecommendationResponseSchema(
             tipo=request.tipo_recomendacion,
             user_id=request.user_id,
-            criterios_usados=user.preferencias + ["ML Prediction", "Rating Prediction"],
+            criterios_usados=criterios,
             total_disponibles=len(items),
             recomendaciones=top_recommendations,
             modelo_usado=True
@@ -347,6 +453,7 @@ async def get_advanced_recommendations(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error generando recomendaciones: {str(e)}")
 
+        
 @router.post("/predict-single_rating")
 async def predict_single_rating(resturant_data: dict):
     """

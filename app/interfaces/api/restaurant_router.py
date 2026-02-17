@@ -27,7 +27,10 @@ async def get_restaurant(restaurant_id: str, restaurant_repo = Depends(get_resta
     restaurant = await restaurant_repo.get_by_id(restaurant_id)
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurante no encontrado")
-    return RestaurantResponseSchema(**restaurant.model_dump())
+    return RestaurantResponseSchema(
+        id_restaurante=restaurant.id or restaurant._id,
+        **{k: v for k, v in restaurant.model_dump().items() if k not in ['id', '_id']}
+    )
 
 @router.get("/", response_model=List[RestaurantResponseSchema])
 async def get_restaurants(
@@ -44,4 +47,7 @@ async def get_restaurants(
     else:
         restaurants = await restaurant_repo.get_all()
     
-    return [RestaurantResponseSchema(**restaurant.model_dump()) for restaurant in restaurants]
+    return [RestaurantResponseSchema(
+        id_restaurante=restaurant.id or restaurant._id,
+        **{k: v for k, v in restaurant.model_dump().items() if k not in ['id', '_id']}
+    ) for restaurant in restaurants]

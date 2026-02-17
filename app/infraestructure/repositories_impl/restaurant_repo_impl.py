@@ -35,7 +35,7 @@ class RestaurantRepositoryImpl(RestaurantRepository):
         return None
     
     async def get_all(self) -> List[Restaurant]:
-        docs = list(self.collection.find({"activo": True}))
+        docs = list(self.collection.find())
         restaurants = []
         for doc in docs:
             doc["_id"] = str(doc["_id"])
@@ -44,8 +44,7 @@ class RestaurantRepositoryImpl(RestaurantRepository):
     
     async def get_by_category(self, categoria: str) -> List[Restaurant]:
         query = {
-            "categoria_rest": {"$regex": categoria, "$options": "i"},
-            "activo": True
+            "categoria_rest": {"$regex": categoria, "$options": "i"}
         }
         docs = list(self.collection.find(query))
         restaurants = []

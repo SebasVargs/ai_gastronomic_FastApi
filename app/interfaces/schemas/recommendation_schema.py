@@ -10,6 +10,17 @@ class RecommendationRequestSchema(BaseModel):
     latitud: Optional[float] = Field(None, ge=-90, le=90)
     longitud: Optional[float] = Field(None, ge=-180, le=180)
     radio_km: Optional[float] = Field(10.0, gt=0, le=100)
+    # Nuevos filtros
+    precio_min: Optional[float] = Field(None, ge=0, description="Precio mínimo en COP")
+    precio_max: Optional[float] = Field(None, ge=0, description="Precio máximo en COP")
+    categoria: Optional[str] = Field(None, description="Categoría específica a filtrar")
+    rating_minimo: Optional[float] = Field(None, ge=0, le=5, description="Rating mínimo predicho")
+    abierto_ahora: Optional[bool] = Field(False, description="Solo restaurantes abiertos")
+    dia_semana: Optional[int] = Field(None, ge=0, le=6, description="Día de la semana (0=Lunes)")
+    hora: Optional[int] = Field(None, ge=0, le=1439, description="Hora en minutos desde medianoche")
+    popularidad_minima: Optional[float] = Field(None, ge=0, le=100, description="Popularidad mínima")
+    confianza_minima: Optional[float] = Field(None, ge=0, le=1, description="Confianza ML mínima (0-1)")
+    excluir_categorias: Optional[List[str]] = Field(None, description="Categorías a excluir")
 
 class RecommendationResponseSchema(BaseModel):
     tipo: str

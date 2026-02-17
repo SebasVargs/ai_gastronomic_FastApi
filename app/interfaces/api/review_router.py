@@ -40,16 +40,16 @@ async def get_review(review_id: str, review_repo = Depends(get_review_repository
 @router.get("/", response_model=List[ReviewResponseSchema])
 async def get_reviews(
     user_id: Optional[str] = Query(None, description="Filtrar por usuario"),
-    id_restaurante: Optional[str] = Query(None, description="Filtrar por restaurante"),
+    restaurante_id: Optional[str] = Query(None, description="Filtrar por restaurante"),
     favorites_only: Optional[bool] = Query(False, description="Solo favoritos"),
     review_repo = Depends(get_review_repository)
 ):
-    if id_usuario and favorites_only:
-        reviews = await review_repo.get_favorites_by_user(id_usuario)
-    elif id_usuario:
-        reviews = await review_repo.get_by_user(id_usuario)
-    elif id_restaurante:
-        reviews = await review_repo.get_by_restaurant(id_restaurante)
+    if user_id and favorites_only:
+        reviews = await review_repo.get_favorites_by_user(user_id)
+    elif user_id:
+        reviews = await review_repo.get_by_user(user_id)
+    elif restaurante_id:
+        reviews = await review_repo.get_by_restaurant(restaurante_id)
     else:
         # No implementamos get_all() para reviews por privacidad
         raise HTTPException(status_code=400, detail="Debe especificar user_id o restaurant_id")
