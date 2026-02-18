@@ -16,7 +16,6 @@ class CsvDataService:
 
     def __init__(self, csv_path: Optional[str] = None):
         if csv_path is None:
-            # Default path relative to project root
             base_dir = os.path.dirname(os.path.abspath(__file__))
             project_root = os.path.join(base_dir, "..", "..", "..")
             csv_path = os.path.join(project_root, "uploads", "complementary_data.csv")
@@ -39,7 +38,7 @@ class CsvDataService:
         """Reload the CSV (useful if the file changes)."""
         self._load()
 
-    # ---- Plates ----
+    # ── Plates ────────────────────────────────────────────────────────────────
 
     def get_all_plates(self) -> List[Dict[str, Any]]:
         """Return all plates as a list of dicts (ready for ML pipeline)."""
@@ -61,7 +60,54 @@ class CsvDataService:
         mask = self.df["categoria_plato"].str.contains(category, case=False, na=False)
         return self.df[mask].to_dict(orient="records")
 
-    # ---- Restaurants ----
+    def get_plates_by_restaurant(self, restaurante_id: str) -> List[Dict[str, Any]]:
+        """
+        Return all plates that belong to a given restaurante_id.
+        This is a direct in-memory filter on the already-loaded DataFrame —
+        zero ML, zero network calls, no timeout risk.
+
+        Returns a clean list ready for the frontend:
+          id, nombre, categoria, precio, rating, popularidad, descripcion
+        """
+        if self.df is None or self.df.empty:
+            return []
+
+        mask = self.df["restaurante_id"] == restaurante_id
+        subset = self.df[mask]
+
+        if subset.empty:
+            return []
+
+        # Columns we expose to the frontend (all guaranteed to exist in the dataset)
+        plate_cols = {
+            "plato_id":       "id",
+            "nombre_plato":   "nombre",
+            "categoria_plato":"categoria",
+            "precio":         "precio",
+            "rating":         "rating",
+            "popularidad":    "popularidad",
+        }
+
+        result = []
+        for _, row in subset.iterrows():
+            plate: Dict[str, Any] = {}
+            for csv_col, out_key in plate_cols.items():
+                if csv_col in row:
+                    value = row[csv_col]
+                    # Convert numpy types to plain Python so JSON serialisation works
+                    if hasattr(value, "item"):
+                        value = value.item()
+                    plate[out_key] = value
+
+            # Optional field
+            plate["descripcion"] = str(row.get("descripcion", "")) if "descripcion" in row else ""
+            result.append(plate)
+
+        # Sort by rating descending by default
+        result.sort(key=lambda x: x.get("rating", 0), reverse=True)
+        return result
+
+    # ── Restaurants ───────────────────────────────────────────────────────────
 
     def get_all_restaurants(self) -> List[Dict[str, Any]]:
         """Return unique restaurants extracted from the CSV."""
@@ -71,20 +117,19 @@ class CsvDataService:
         restaurant_cols = [
             "restaurante_id", "nombre_restaurante", "categoria_rest",
             "latitud", "longitud",
-            "lunes_apertura_min", "lunes_cierre_min",
-            "martes_apertura_min", "martes_cierre_min",
-            "miércoles_apertura_min", "miércoles_cierre_min",
-            "jueves_apertura_min", "jueves_cierre_min",
-            "viernes_apertura_min", "viernes_cierre_min",
-            "sábado_apertura_min", "sábado_cierre_min",
-            "domingo_apertura_min", "domingo_cierre_min",
+            "lunes_apertura_min",    "lunes_cierre_min",
+            "martes_apertura_min",   "martes_cierre_min",
+            "miércoles_apertura_min","miércoles_cierre_min",
+            "jueves_apertura_min",   "jueves_cierre_min",
+            "viernes_apertura_min",  "viernes_cierre_min",
+            "sábado_apertura_min",   "sábado_cierre_min",
+            "domingo_apertura_min",  "domingo_cierre_min",
         ]
-        # Only keep columns that actually exist
         existing_cols = [c for c in restaurant_cols if c in self.df.columns]
         restaurants_df = self.df[existing_cols].drop_duplicates(subset=["restaurante_id"])
         return restaurants_df.to_dict(orient="records")
 
-    # ---- Stats ----
+    # ── Stats ─────────────────────────────────────────────────────────────────
 
     def get_stats(self) -> Dict[str, Any]:
         """Return basic stats about the loaded data."""

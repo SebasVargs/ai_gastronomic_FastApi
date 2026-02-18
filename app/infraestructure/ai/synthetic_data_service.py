@@ -470,6 +470,133 @@ class SyntheticDataService:
         return max(1.0, min(5.0, float(prediction)))
 
 
+    def predict_batch(self, items_ml_data: list) -> list:
+        """
+        Predice ratings para una lista de items en una sola pasada vectorizada.
+
+        Reemplaza el loop:
+            for item in filtered_items:
+                predicted_rating = synthetic_ai_service.predict_rating(item['ml_data'])
+
+        Por una sola llamada:
+            ratings = synthetic_ai_service.predict_batch([i['ml_data'] for i in filtered_items])
+
+        Ganancia: crea el DataFrame UNA sola vez, prepara features UNA sola vez,
+        llama a model.predict() UNA sola vez → O(1) overhead de sklearn sin importar
+        cuántos items haya (en lugar de O(n) llamadas individuales).
+
+        Returns:
+            List[float] en el mismo orden que items_ml_data.
+            Si el modelo no está disponible, devuelve 3.5 para cada item.
+        """
+        if not items_ml_data:
+            return []
+
+        if not self.model_rf:
+            self.load_models()
+
+        if not self.model_rf:
+            # Fallback: devolver rating por defecto para cada item
+            return [float(item.get("rating", 3.5)) for item in items_ml_data]
+
+        try:
+            import pandas as pd
+            import numpy as np
+
+            # 1. Construir DataFrame completo de una vez
+            df_batch = pd.DataFrame(items_ml_data)
+
+            # 2. Preparar features (mismo proceso que en predict_rating individual)
+            df_processed = self._prepare_features_batch(df_batch)
+
+            # 3. Seleccionar columnas de features en el mismo orden que el modelo fue entrenado
+            available_features = [col for col in self.feature_columns if col in df_processed.columns]
+
+            if not available_features:
+                return [float(item.get("rating", 3.5)) for item in items_ml_data]
+
+            X = df_processed[available_features].fillna(0)
+
+            # 4. Escalar y predecir en batch (UNA sola llamada)
+            X_scaled = self.scaler.transform(X)
+            predictions = self.model_rf.predict(X_scaled)
+
+            # 5. Clamp entre 1.0 y 5.0 y convertir a lista Python
+            return [max(1.0, min(5.0, float(p))) for p in predictions]
+
+        except Exception as e:
+            print(f"⚠️  Error en predict_batch, usando fallback individual: {e}")
+            # Fallback graceful: intentar predicción individual por si acaso
+            results = []
+            for item in items_ml_data:
+                try:
+                    results.append(self.predict_rating(item))
+                except Exception:
+                    results.append(float(item.get("rating", 3.5)))
+            return results
+
+    def _prepare_features_batch(self, df: "pd.DataFrame") -> "pd.DataFrame":
+        """
+        Versión batch de prepare_features — opera sobre un DataFrame completo.
+        Replica la misma lógica que usa train_comprehensive_model para que
+        las features sean idénticas a las del entrenamiento.
+        """
+        import numpy as np
+
+        df_processed = df.copy()
+
+        # Encoding categórico
+        categorical_map = {
+            "categoria_rest":  "categoria_rest_encoded",
+            "categoria_plato": "categoria_plato_encoded",
+        }
+        for col, encoded_col in categorical_map.items():
+            if col in df_processed.columns and col in self.label_encoders:
+                try:
+                    df_processed[encoded_col] = self.label_encoders[col].transform(
+                        df_processed[col].astype(str)
+                    )
+                except ValueError:
+                    # Categoría desconocida → 0
+                    df_processed[encoded_col] = df_processed[col].apply(
+                        lambda v: self._safe_encode(col, v)
+                    )
+            elif encoded_col not in df_processed.columns:
+                df_processed[encoded_col] = 0
+
+        # Features derivadas (idénticas a las del entrenamiento)
+        if "weekday" in df_processed.columns:
+            df_processed["is_weekend"] = (df_processed["weekday"] >= 5).astype(int)
+        else:
+            df_processed["is_weekend"] = 0
+
+        apertura = df_processed.get("lunes_apertura_min", 480)
+        cierre   = df_processed.get("lunes_cierre_min",   1320)
+        df_processed["hour_from_minutes"] = ((apertura + cierre) / 2 / 60).fillna(12)
+
+        if "precio" in df_processed.columns:
+            df_processed["precio_log"] = np.log1p(df_processed["precio"])
+        else:
+            df_processed["precio_log"] = np.log1p(15000)
+
+        if "popularidad" in df_processed.columns:
+            pop_min = df_processed["popularidad"].min()
+            pop_max = df_processed["popularidad"].max()
+            df_processed["popularidad_norm"] = (
+                (df_processed["popularidad"] - pop_min) / (pop_max - pop_min + 1e-6)
+            )
+        else:
+            df_processed["popularidad_norm"] = 0.5
+
+        return df_processed
+
+    def _safe_encode(self, col: str, value) -> int:
+        """Encode a single value safely, returning 0 for unknown categories."""
+        try:
+            return int(self.label_encoders[col].transform([str(value)])[0])
+        except Exception:
+            return 0
+
     def get_model_status(self) -> Dict[str, Any]:
         """Retorna el estado actual de los modelos"""
         return {

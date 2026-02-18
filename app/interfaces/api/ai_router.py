@@ -359,16 +359,18 @@ async def get_advanced_recommendations(
                                       for exc in excluir_lower)]
             print(f"❌ Después de filtro exclusión {request.excluir_categorias}: {len(filtered_items)} items")
 
-        print(f"🤖 Ejecutando predicción ML en {len(filtered_items)} items...")
-        
-        for item in filtered_items:
-            try:
-                predicted_rating = synthetic_ai_service.predict_rating(item['ml_data'])
-                item['predicted_rating'] = predicted_rating
-                item['ml_confidence'] = min(predicted_rating / 5.0, 1.0)
-            except Exception as e:
-                item['predicted_rating'] = item.get('rating', 3.5)
-                item['ml_confidence'] = 0.5
+        print(f"🤖 Ejecutando predicción ML batch en {len(filtered_items)} items...")
+
+        # Extraer ml_data de todos los items filtrados de una vez
+        ml_data_batch = [item['ml_data'] for item in filtered_items]
+
+        # UNA sola llamada al modelo → vectorizado con pandas/sklearn
+        predicted_ratings = synthetic_ai_service.predict_batch(ml_data_batch)
+
+        # Asignar resultados de vuelta a cada item
+        for item, predicted_rating in zip(filtered_items, predicted_ratings):
+            item['predicted_rating'] = predicted_rating
+            item['ml_confidence'] = min(predicted_rating / 5.0, 1.0)
 
         if request.rating_minimo is not None:
             filtered_items = [item for item in filtered_items 

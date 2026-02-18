@@ -3,13 +3,29 @@ from typing import List, Optional
 from app.infraestructure.db.mongo_client import get_db
 from app.infraestructure.repositories_impl.restaurant_repo_impl import RestaurantRepositoryImpl
 from app.interfaces.schemas.restaurant_schema import RestaurantCreateSchema, RestaurantResponseSchema
+from app.infraestructure.data.csv_data_service import CsvDataService
 
 router = APIRouter(prefix="/api/restaurants", tags=["restaurants"])
+_csv = CsvDataService()
+
 
 def get_restaurant_repository():
     db = get_db()
     return RestaurantRepositoryImpl(db)
 
+@router.get("/{restaurant_id}/plates")
+async def get_plates_by_restaurant(restaurant_id: str):
+    """
+    Devuelve todos los platos de un restaurante directamente desde el CSV en memoria.
+    Sin ML, sin Mongo, sin riesgo de timeout.
+    """
+    plates = _csv.get_plates_by_restaurant(restaurant_id)
+
+    if not plates:
+        # Devolvemos lista vacía con 200 — el frontend lo maneja
+        return {"success": True, "data": [], "total": 0}
+
+    return {"success": True, "data": plates, "total": len(plates)}
 
 @router.post("/", response_model=RestaurantResponseSchema)
 async def create_restaurant(restaurant_data: RestaurantCreateSchema, restaurant_repo = Depends(get_restaurant_repository)):
