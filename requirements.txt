@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+pymongo[srv]
+pydantic
+pandas
+numpy
+scikit-learn
+joblib

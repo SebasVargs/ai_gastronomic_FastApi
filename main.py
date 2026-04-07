@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -124,14 +125,15 @@ async def global_exception_handler(request, exc):
 
 # Ejecutar aplicación
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
     print("🌟 Iniciando servidor FastAPI...")
-    print("📖 Documentación disponible en: http://localhost:8000/docs")
-    print("🔄 Redoc disponible en: http://localhost:8000/redoc")
+    print(f"📖 Documentación disponible en: http://localhost:{port}/docs")
+    print(f"🔄 Redoc disponible en: http://localhost:{port}/redoc")
     
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True,  # Auto-reload en desarrollo
+        port=port,
+        reload=False,
         log_level="info"
     )
